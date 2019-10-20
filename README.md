@@ -7,14 +7,13 @@ This is what I use to collect statistics in a PostgreSQL database.
 
 I decided on several different tables for the played song (including timestamp), the context (if available), the track itself, the artist and the album.
 
--------
 ## How to use
 
 A PostgreSQL database needs to be in place. The schema for this can be found in `dump.sql`. 
 
 Follow [Spotify's guide](https://developer.spotify.com/documentation/general/guides/app-settings/) to create a client id (and secret). Follow through until you have a refresh token you can use. The Authorization Scope needed for this script is `user-read-recently-played`.
 
-`exampleconfig.ini` needs to get changed:
+`config.ini.example` needs to get changed:
   * fill in the details of your database
   * fill in the client id, secret and refresh token from the last step
   * save as config.ini in the same directory
