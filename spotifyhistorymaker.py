@@ -1,25 +1,24 @@
 import configparser
 import json
+import sys
+
 import psycopg2
 import requests
 
 
-def get_access_token(refresh_token: str) -> str:
+def get_access_token(config) -> str:
     """Use the given refresh-token to get a new and valid access
     token. If successful the access token will be returned.
     """
-    config = configparser.ConfigParser()
-    config.read('config.ini')
-
     payload = {
-        'refresh_token': config['Spotify']['Refreshtoken'],
+        'refresh_token': config['refresh_token'],
         'grant_type': 'refresh_token',
     }
 
     r = requests.post(
         'https://accounts.spotify.com/api/token',
         data=payload,
-        auth=(config['Spotify']['Clientid'], config['Spotify']['Clientsecret']),
+        auth=(config['client_id'], config['client_secret']),
     )
 
     r.raise_for_status()
@@ -48,7 +47,7 @@ def get_recent_tracks(access_token: str) -> str:
     )
 
     response.raise_for_status()
-    return response
+    return response.json()
 
 
 def get_artist_genres(access_token: str, artist_id: str):
@@ -66,7 +65,7 @@ def get_artist_genres(access_token: str, artist_id: str):
     }
 
     response = requests.get(
-        'https://api.spotify.com/v1/artists/' + artist_id, headers=track_headers
+        f'https://api.spotify.com/v1/artists/{artist_id}', headers=track_headers
     )
 
     response.raise_for_status()
@@ -74,9 +73,9 @@ def get_artist_genres(access_token: str, artist_id: str):
     return response.json()['genres']
 
 
-def connect_to_database(connection: str) -> psycopg2.extensions.connection:
+def connect_to_database(dsn: str) -> psycopg2.extensions.connection:
     """Establish connection to a database."""
-    return psycopg2.connect(connection)
+    return psycopg2.connect(dsn)
 
 
 def insert_cursors(conn, after, before):
@@ -86,10 +85,11 @@ def insert_cursors(conn, after, before):
     cur = conn.cursor()
 
     cur.execute(
-        '''INSERT INTO cursors (after,before) 
-      VALUES (%s,%s)
-      ON CONFLICT (after)
-      DO NOTHING;''',
+        '''
+        INSERT INTO cursors (after, before)
+        VALUES (%s, %s)
+        ON CONFLICT (after) DO NOTHING;
+        ''',
         (after, before),
     )
 
@@ -102,10 +102,11 @@ def insert_context(conn, uri, ctype):
     cur = conn.cursor()
 
     cur.execute(
-        '''INSERT INTO context (uri,type) 
-      VALUES (%s,%s)
-      ON CONFLICT (uri)
-      DO NOTHING;''',
+        '''
+        INSERT INTO context (uri,type) 
+        VALUES (%s,%s)
+        ON CONFLICT (uri) DO NOTHING;
+        ''',
         (uri, ctype),
     )
 
@@ -119,10 +120,11 @@ def insert_played(conn, trackuri, artisturi, time, contexturi=None):
     cur = conn.cursor()
 
     cur.execute(
-        '''INSERT INTO played (trackuri,artisturi,contexturi,time) 
-      VALUES (%s, %s, %s, %s)
-      ON CONFLICT (time)
-      DO NOTHING;''',
+        '''
+        INSERT INTO played (trackuri,artisturi,contexturi,time) 
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT (time) DO NOTHING;
+        ''',
         (trackuri, artisturi, contexturi, time),
     )
 
@@ -146,10 +148,11 @@ def insert_track(
     cur = conn.cursor()
 
     cur.execute(
-        '''INSERT INTO track (title,uri,artisturi,albumuri,id,duration,explicit,popularity,tracknumber) 
-      VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-      ON CONFLICT (id)
-      DO NOTHING;''',
+        '''
+        INSERT INTO track (title,uri,artisturi,albumuri,id,duration,explicit,popularity,tracknumber) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (id) DO NOTHING;
+        ''',
         (
             title,
             uri,
@@ -176,10 +179,11 @@ def insert_album(conn, title, uri, artisturi, aid):
     cur = conn.cursor()
 
     cur.execute(
-        '''INSERT INTO album (title,uri,artisturi,id) 
-      VALUES (%s, %s, %s, %s)
-      ON CONFLICT (id)
-      DO NOTHING;''',
+        '''
+        INSERT INTO album (title,uri,artisturi,id) 
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT (id) DO NOTHING;
+        ''',
         (title, uri, artisturi, aid),
     )
 
@@ -196,10 +200,11 @@ def insert_artist(conn, name, uri, aid, gen):
     cur = conn.cursor()
 
     cur.execute(
-        '''INSERT INTO artist (name,uri,id,genre) 
-      VALUES (%s, %s, %s, %s)
-      ON CONFLICT (id)
-      DO NOTHING;''',
+        '''
+        INSERT INTO artist (name,uri,id,genre) 
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT (id) DO NOTHING;
+        ''',
         (name, uri, aid, gen),
     )
 
@@ -207,40 +212,33 @@ def insert_artist(conn, name, uri, aid, gen):
 def is_new_artist(conn, aid) -> bool:
     """Check if a specific artist ID is already in the database."""
     cur = conn.cursor()
-    cur.execute("SELECT id FROM artist WHERE id=%s", (aid,))
+    cur.execute("SELECT 1 id FROM artist WHERE id=%s", (aid,))
     return cur.rowcount == 0
 
 
 def main():
     config = configparser.ConfigParser()
     config.read('config.ini')
-    if len(config) == 0:
+    if not config:
         raise ValueError("No valid config.ini available.")
-
-    # The refresh token for Spotify.
-    # For more information check: https://developer.spotify.com/documentation/general/guides/authorization-guide/
-    refresh_token = config['Spotify']['Refreshtoken']
 
     # Generate a new access token with the refresh token:
     try:
-        access_token = get_access_token(refresh_token)
+        access_token = get_access_token(config['Spotify'])
     except requests.exceptions.HTTPError as err:
         print("Could not get refresh token from Spotify:")
         print(err)
         print("Exiting...")
-        exit()
-    access_token = get_access_token(refresh_token)
+        sys.exit(1)
 
     # The actual request to spotify:
     try:
-        response = get_recent_tracks(access_token)
+        rjson = get_recent_tracks(access_token)
     except requests.exceptions.HTTPError as err:
         print("Could not get recent tracks from Spotify:")
         print(err)
         print("Exiting...")
-        exit()
-
-    rjson = response.json()
+        sys.exit(1)
 
     # Connection to the database according to config file:
     try:
@@ -250,7 +248,7 @@ def main():
     except psycopg2.Error as err:
         print(err)
         print("Exiting...")
-        exit()
+        sys.exit(1)
 
     # Cursors are inserted into the database:
     insert_cursors(conn, rjson['cursors']['after'], rjson['cursors']['before'])
@@ -258,7 +256,7 @@ def main():
     for item in rjson['items']:
         track = item['track']
         album = item['track']['album']
-        # Note: Only the main artist will get saved to the database:
+        # XXX: Only the main artist will get saved to the database:
         artist = item['track']['artists'][0]
 
         # Album information is inserted into the database:
@@ -294,18 +292,18 @@ def main():
                 conn, artist['name'], artist['uri'], artist['id'], artist_genres
             )
 
-        if item['context'] is not None:
-            insert_context(conn, item['context']['uri'], item['context']['type'])
-            insert_played(
-                conn,
-                track['uri'],
-                artist['uri'],
-                item['played_at'],
-                item['context']['uri'],
-            )
-        else:
-            insert_played(conn, track['uri'], artist['uri'], item['played_at'])
-        conn.commit()
+        try:
+            context_uri = item['context']['uri']
+            insert_context(conn, context_uri, item['context']['type'])
+        except TypeError:
+            context_uri = None
+        insert_played(
+            conn,
+            track['uri'],
+            artist['uri'],
+            item['played_at'],
+            context_uri,
+        )
 
     conn.close()
 

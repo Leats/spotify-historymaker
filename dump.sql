@@ -21,7 +21,7 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 --
--- Name: album; Type: TABLE; Schema: public; Owner: spotify
+-- Name: album; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.album (
@@ -32,10 +32,8 @@ CREATE TABLE public.album (
 );
 
 
-ALTER TABLE public.album OWNER TO spotify;
-
 --
--- Name: artist; Type: TABLE; Schema: public; Owner: spotify
+-- Name: artist; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.artist (
@@ -45,10 +43,8 @@ CREATE TABLE public.artist (
 );
 
 
-ALTER TABLE public.artist OWNER TO spotify;
-
 --
--- Name: context; Type: TABLE; Schema: public; Owner: spotify
+-- Name: context; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.context (
@@ -57,10 +53,8 @@ CREATE TABLE public.context (
 );
 
 
-ALTER TABLE public.context OWNER TO spotify;
-
 --
--- Name: cursors; Type: TABLE; Schema: public; Owner: spotify
+-- Name: cursors; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.cursors (
@@ -69,10 +63,8 @@ CREATE TABLE public.cursors (
 );
 
 
-ALTER TABLE public.cursors OWNER TO spotify;
-
 --
--- Name: played; Type: TABLE; Schema: public; Owner: spotify
+-- Name: played; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.played (
@@ -83,10 +75,8 @@ CREATE TABLE public.played (
 );
 
 
-ALTER TABLE public.played OWNER TO spotify;
-
 --
--- Name: track; Type: TABLE; Schema: public; Owner: spotify
+-- Name: track; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.track (
@@ -102,10 +92,8 @@ CREATE TABLE public.track (
 );
 
 
-ALTER TABLE public.track OWNER TO spotify;
-
 --
--- Name: album album_pkey; Type: CONSTRAINT; Schema: public; Owner: spotify
+-- Name: album album_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.album
@@ -113,7 +101,7 @@ ALTER TABLE ONLY public.album
 
 
 --
--- Name: album album_uri_key; Type: CONSTRAINT; Schema: public; Owner: spotify
+-- Name: album album_uri_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.album
@@ -121,7 +109,7 @@ ALTER TABLE ONLY public.album
 
 
 --
--- Name: artist artist_pkey; Type: CONSTRAINT; Schema: public; Owner: spotify
+-- Name: artist artist_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.artist
@@ -129,7 +117,7 @@ ALTER TABLE ONLY public.artist
 
 
 --
--- Name: artist artist_uri_key; Type: CONSTRAINT; Schema: public; Owner: spotify
+-- Name: artist artist_uri_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.artist
@@ -137,7 +125,7 @@ ALTER TABLE ONLY public.artist
 
 
 --
--- Name: context context_pkey; Type: CONSTRAINT; Schema: public; Owner: spotify
+-- Name: context context_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.context
@@ -145,7 +133,7 @@ ALTER TABLE ONLY public.context
 
 
 --
--- Name: cursors cursors_pkey; Type: CONSTRAINT; Schema: public; Owner: spotify
+-- Name: cursors cursors_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.cursors
@@ -153,7 +141,7 @@ ALTER TABLE ONLY public.cursors
 
 
 --
--- Name: played played_pkey; Type: CONSTRAINT; Schema: public; Owner: spotify
+-- Name: played played_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.played
@@ -161,7 +149,7 @@ ALTER TABLE ONLY public.played
 
 
 --
--- Name: track track_pkey; Type: CONSTRAINT; Schema: public; Owner: spotify
+-- Name: track track_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.track
@@ -169,7 +157,7 @@ ALTER TABLE ONLY public.track
 
 
 --
--- Name: track track_uri_key; Type: CONSTRAINT; Schema: public; Owner: spotify
+-- Name: track track_uri_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.track
