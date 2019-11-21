@@ -1,5 +1,4 @@
 import configparser
-import json
 import sys
 
 import psycopg2
@@ -294,9 +293,10 @@ def main():
 
         try:
             context_uri = item['context']['uri']
-            insert_context(conn, context_uri, item['context']['type'])
         except TypeError:
             context_uri = None
+        else:
+            insert_context(conn, context_uri, item['context']['type'])
         insert_played(
             conn,
             track['uri'],
