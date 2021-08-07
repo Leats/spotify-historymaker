@@ -39,7 +39,8 @@ CREATE TABLE public.album (
 CREATE TABLE public.artist (
     name character varying NOT NULL,
     uri character varying NOT NULL,
-    id character varying NOT NULL
+    id character varying NOT NULL,
+    genre varchar[] NOT NULL
 );
 
 

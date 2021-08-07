@@ -1,8 +1,10 @@
 import configparser
+import os
 import sys
 
 import psycopg2
 import requests
+from datetime import datetime
 
 
 def get_access_token(config) -> str:
@@ -10,18 +12,18 @@ def get_access_token(config) -> str:
     token. If successful the access token will be returned.
     """
     payload = {
-        'refresh_token': config['refresh_token'],
-        'grant_type': 'refresh_token',
+        "refresh_token": config["refresh_token"],
+        "grant_type": "refresh_token",
     }
 
     r = requests.post(
-        'https://accounts.spotify.com/api/token',
+        "https://accounts.spotify.com/api/token",
         data=payload,
-        auth=(config['client_id'], config['client_secret']),
+        auth=(config["client_id"], config["client_secret"]),
     )
 
     r.raise_for_status()
-    return r.json()['access_token']
+    return r.json()["access_token"]
 
 
 def get_recent_tracks(access_token: str) -> str:
@@ -29,18 +31,18 @@ def get_recent_tracks(access_token: str) -> str:
     and get the most recent played tracks
     (up to 50, as set by Spotify's API).
     """
-    bearer_token = f'Bearer {access_token}'
+    bearer_token = f"Bearer {access_token}"
 
     track_headers = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': bearer_token,
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": bearer_token,
     }
 
-    track_params = (('type', 'track'), ('limit', '50'))
+    track_params = (("type", "track"), ("limit", "50"))
 
     response = requests.get(
-        'https://api.spotify.com/v1/me/player/recently-played',
+        "https://api.spotify.com/v1/me/player/recently-played",
         headers=track_headers,
         params=track_params,
     )
@@ -55,21 +57,21 @@ def get_artist_genres(access_token: str, artist_id: str):
     get_recent_tracks(), which is why a different request
     is necessary.
     """
-    bearer_token = f'Bearer {access_token}'
+    bearer_token = f"Bearer {access_token}"
 
     track_headers = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': bearer_token,
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": bearer_token,
     }
 
     response = requests.get(
-        f'https://api.spotify.com/v1/artists/{artist_id}', headers=track_headers
+        f"https://api.spotify.com/v1/artists/{artist_id}", headers=track_headers
     )
 
     response.raise_for_status()
 
-    return response.json()['genres']
+    return response.json()["genres"]
 
 
 def connect_to_database(dsn: str) -> psycopg2.extensions.connection:
@@ -84,11 +86,11 @@ def insert_cursors(conn, after, before):
     cur = conn.cursor()
 
     cur.execute(
-        '''
+        """
         INSERT INTO cursors (after, before)
         VALUES (%s, %s)
         ON CONFLICT (after) DO NOTHING;
-        ''',
+        """,
         (after, before),
     )
 
@@ -101,11 +103,11 @@ def insert_context(conn, uri, ctype):
     cur = conn.cursor()
 
     cur.execute(
-        '''
+        """
         INSERT INTO context (uri,type) 
         VALUES (%s,%s)
         ON CONFLICT (uri) DO NOTHING;
-        ''',
+        """,
         (uri, ctype),
     )
 
@@ -119,13 +121,14 @@ def insert_played(conn, trackuri, artisturi, time, contexturi=None):
     cur = conn.cursor()
 
     cur.execute(
-        '''
+        """
         INSERT INTO played (trackuri,artisturi,contexturi,time) 
         VALUES (%s, %s, %s, %s)
         ON CONFLICT (time) DO NOTHING;
-        ''',
+        """,
         (trackuri, artisturi, contexturi, time),
     )
+    conn.commit()
 
 
 def insert_track(
@@ -147,11 +150,11 @@ def insert_track(
     cur = conn.cursor()
 
     cur.execute(
-        '''
+        """
         INSERT INTO track (title,uri,artisturi,albumuri,id,duration,explicit,popularity,tracknumber) 
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (id) DO NOTHING;
-        ''',
+        """,
         (
             title,
             uri,
@@ -178,11 +181,11 @@ def insert_album(conn, title, uri, artisturi, aid):
     cur = conn.cursor()
 
     cur.execute(
-        '''
+        """
         INSERT INTO album (title,uri,artisturi,id) 
         VALUES (%s, %s, %s, %s)
         ON CONFLICT (id) DO NOTHING;
-        ''',
+        """,
         (title, uri, artisturi, aid),
     )
 
@@ -199,11 +202,11 @@ def insert_artist(conn, name, uri, aid, gen):
     cur = conn.cursor()
 
     cur.execute(
-        '''
+        """
         INSERT INTO artist (name,uri,id,genre) 
         VALUES (%s, %s, %s, %s)
         ON CONFLICT (id) DO NOTHING;
-        ''',
+        """,
         (name, uri, aid, gen),
     )
 
@@ -217,13 +220,17 @@ def is_new_artist(conn, aid) -> bool:
 
 def main():
     config = configparser.ConfigParser()
-    config.read('config.ini')
+    config.read(
+        config.read(
+            os.path.abspath(os.path.join(os.path.dirname(__file__), "config.ini"))
+        )
+    )
     if not config:
         raise ValueError("No valid config.ini available.")
 
     # Generate a new access token with the refresh token:
     try:
-        access_token = get_access_token(config['Spotify'])
+        access_token = get_access_token(config["Spotify"])
     except requests.exceptions.HTTPError as err:
         print("Could not get refresh token from Spotify:")
         print(err)
@@ -242,7 +249,7 @@ def main():
     # Connection to the database according to config file:
     try:
         conn = connect_to_database(
-            ' '.join('='.join(sub) for sub in config.items("Database"))
+            " ".join("=".join(sub) for sub in config.items("Database"))
         )
     except psycopg2.Error as err:
         print(err)
@@ -250,37 +257,37 @@ def main():
         sys.exit(1)
 
     # Cursors are inserted into the database:
-    insert_cursors(conn, rjson['cursors']['after'], rjson['cursors']['before'])
+    insert_cursors(conn, rjson["cursors"]["after"], rjson["cursors"]["before"])
 
-    for item in rjson['items']:
-        track = item['track']
-        album = item['track']['album']
+    for item in rjson["items"]:
+        track = item["track"]
+        album = item["track"]["album"]
         # XXX: Only the main artist will get saved to the database:
-        artist = item['track']['artists'][0]
+        artist = item["track"]["artists"][0]
 
         # Album information is inserted into the database:
-        insert_album(conn, album['name'], album['uri'], artist['uri'], album['id'])
+        insert_album(conn, album["name"], album["uri"], artist["uri"], album["id"])
         # Track infromation is inserted into the database:
         insert_track(
             conn,
-            track['name'],
-            track['uri'],
-            artist['uri'],
-            album['uri'],
-            track['id'],
-            track['duration_ms'],
-            track['explicit'],
-            track['popularity'],
-            track['track_number'],
+            track["name"],
+            track["uri"],
+            artist["uri"],
+            album["uri"],
+            track["id"],
+            track["duration_ms"],
+            track["explicit"],
+            track["popularity"],
+            track["track_number"],
         )
 
         # Check if the artist is not yet in the database.
         # This will prevent an unneccessary request to spotify to get the artist genres.
-        if is_new_artist(conn, artist['id']):
+        if is_new_artist(conn, artist["id"]):
             # Try to collect genres of new artist. If not possible, the artist will be added
             # without any genres.
             try:
-                artist_genres = get_artist_genres(access_token, artist['id'])
+                artist_genres = get_artist_genres(access_token, artist["id"])
             except requests.exceptions.HTTPError as err:
                 print("Could not retrieve Artist Genres from Spotify:")
                 print(err)
@@ -288,25 +295,27 @@ def main():
                 artist_genres = None
 
             insert_artist(
-                conn, artist['name'], artist['uri'], artist['id'], artist_genres
+                conn, artist["name"], artist["uri"], artist["id"], artist_genres
             )
 
         try:
-            context_uri = item['context']['uri']
+            context_uri = item["context"]["uri"]
         except TypeError:
             context_uri = None
         else:
-            insert_context(conn, context_uri, item['context']['type'])
+            insert_context(conn, context_uri, item["context"]["type"])
         insert_played(
             conn,
-            track['uri'],
-            artist['uri'],
-            item['played_at'],
+            track["uri"],
+            artist["uri"],
+            item["played_at"],
             context_uri,
         )
 
+    conn.commit()
     conn.close()
+    print(f"Ran at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
